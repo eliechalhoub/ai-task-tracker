@@ -252,6 +252,16 @@
   .priority-tag.Medium { background: #fef6e7; color: var(--priority-medium); }
   .priority-tag.Low { background: #e9f7ef; color: var(--priority-low); }
 
+  .task-card .tags { display: flex; flex-wrap: wrap; gap: 4px; margin: 0 0 8px; }
+  .tag-chip { background: var(--accent-soft); color: var(--accent); font-size: 10.5px; font-weight: 600; padding: 1px 7px; border-radius: 999px; }
+  .due-pill { font-size: 10.5px; font-weight: 600; padding: 1px 7px; border-radius: 999px; background: #eef0fd; color: var(--text-muted); }
+  .due-pill.overdue { background: var(--danger-soft); color: var(--danger); }
+  .filter-bar { display: flex; align-items: center; gap: 16px; margin-bottom: 16px; padding: 10px 14px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); font-size: 13px; }
+  .field-inline { display: flex; align-items: center; gap: 6px; }
+  .field-inline label { font-weight: 600; color: var(--text-muted); }
+  .field-inline input { padding: 5px 8px; border: 1px solid var(--border); border-radius: 6px; font: inherit; font-size: 12.5px; }
+  .checkbox-inline { display: flex; align-items: center; gap: 6px; font-weight: 600; color: var(--text-muted); }
+
   .task-card .edit-btn {
     border: none;
     background: none;
@@ -386,7 +396,7 @@
     <button class="btn btn-primary" id="new-task-btn">+ New Task</button>
   </header>
 
-  <main>
+  <main>    
     <div id="board-loading">
       <div class="spinner"></div>
       Loading tasks…
@@ -423,6 +433,18 @@
       </section>
     </div>
   </main>
+
+  <div class="filter-bar" id="filter-bar">
+    <div class="field-inline">
+      <label for="filter-tag">Tag</label>
+      <input type="text" id="filter-tag" placeholder="e.g. backend">
+    </div>
+    <label class="checkbox-inline">
+      <input type="checkbox" id="filter-overdue">
+      Overdue only
+    </label>
+    <button class="btn" id="filter-clear-btn">Clear filters</button>
+  </div>
 
   <!-- Create / Edit modal -->
   <div class="modal-overlay" id="modal-overlay">
@@ -471,6 +493,17 @@
           <input type="text" id="task-assignee" placeholder="Unassigned">
         </div>
 
+        <div class="field">
+          <label for="task-due-date">Due date</label>
+          <input type="date" id="task-due-date">
+        </div>
+
+        <div class="field">
+          <label for="task-tags">Tags</label>
+          <input type="text" id="task-tags" placeholder="comma-separated, e.g. backend, urgent">
+          <div class="field-error" id="tags-error">Tags cannot be blank</div>
+        </div>
+
         <div class="modal-actions">
           <button type="button" class="btn" id="modal-cancel-btn">Cancel</button>
           <button type="submit" class="btn btn-primary" id="modal-save-btn">Save</button>
@@ -494,6 +527,7 @@
     let tasks = [];
     let uiState = "loading"; // 'loading' | 'ready' | 'empty' | 'error'
     let errorMessage = "";
+    let activeFilters = { tag: "", overdue: false }; 
 
     // ---------------- dom refs ----------------
     const boardEl = document.getElementById("board");
@@ -515,7 +549,29 @@
     const assigneeField = document.getElementById("task-assignee");
     const formBanner = document.getElementById("form-banner");
 
+    const filterTagInput = document.getElementById("filter-tag");
+    const filterOverdueCheckbox = document.getElementById("filter-overdue");
+    const filterClearBtn = document.getElementById("filter-clear-btn");
+    const dueDateField = document.getElementById("task-due-date");
+    const tagsField = document.getElementById("task-tags");
+    const tagsError = document.getElementById("tags-error");
+
     // ---------------- helpers ----------------
+
+    function isOverdue(task) {
+      if (!task.due_date || task.status === "Done") return false;
+      const today = new Date().toISOString().slice(0, 10);
+      return task.due_date < today;
+    }
+
+    function buildTasksUrl() {
+      const params = new URLSearchParams();
+      if (activeFilters.tag) params.set("tag", activeFilters.tag);
+      if (activeFilters.overdue) params.set("overdue", "true");
+      const query = params.toString();
+      return `${API_BASE}/tasks${query ? `?${query}` : ""}`;
+    }
+    
     function escapeHtml(value) {
       const div = document.createElement("div");
       div.textContent = value == null ? "" : String(value);
@@ -542,7 +598,7 @@
       errorMessage = "";
       render();
       try {
-        const response = await fetch(`${API_BASE}/tasks`);
+        const response = await fetch(buildTasksUrl());
         if (!response.ok) {
           throw new Error(`Server responded with ${response.status}`);
         }
@@ -594,6 +650,12 @@
       const description = task.description
         ? `<p class="description">${escapeHtml(task.description)}</p>`
         : "";
+      const tagsHtml = (task.tags && task.tags.length)
+        ? `<div class="tags">${task.tags.map(t => `<span class="tag-chip">${escapeHtml(t)}</span>`).join("")}</div>`
+        : "";
+      const duePill = task.due_date
+        ? `<span class="due-pill ${isOverdue(task) ? "overdue" : ""}">${isOverdue(task) ? "Overdue: " : "Due "}${escapeHtml(task.due_date)}</span>`
+        : "";
       const assignee = task.assignee ? escapeHtml(task.assignee) : "Unassigned";
 
       return `
@@ -603,8 +665,10 @@
              data-priority="${escapeHtml(task.priority)}">
           <h3>${escapeHtml(task.title)}</h3>
           ${description}
+          ${tagsHtml}
           <div class="meta">
             <span class="priority-tag ${escapeHtml(task.priority)}">${escapeHtml(task.priority)}</span>
+            ${duePill}
             <span>${assignee}</span>
             <button class="edit-btn" data-edit-id="${escapeHtml(task.id)}">Edit</button>
           </div>
@@ -691,6 +755,7 @@
       titleError.classList.remove("visible");
       formBanner.classList.remove("visible");
       formBanner.textContent = "";
+      tagsError.classList.remove("visible");
     }
 
     function openCreateModal() {
@@ -703,6 +768,8 @@
       statusField.value = "ToDo";
       priorityField.value = "Medium";
       assigneeField.value = "";
+      dueDateField.value = "";
+      tagsField.value = "";
       clearFormErrors();
       modalOverlay.classList.add("visible");
       titleField.focus();
@@ -718,6 +785,8 @@
       statusField.value = task.status;
       priorityField.value = task.priority;
       assigneeField.value = task.assignee || "";
+      dueDateField.value = task.due_date || "";
+      tagsField.value = (task.tags || []).join(", ");
       clearFormErrors();
       modalOverlay.classList.add("visible");
       titleField.focus();
@@ -731,6 +800,25 @@
     document.getElementById("new-task-btn").addEventListener("click", openCreateModal);
     document.getElementById("modal-close-btn").addEventListener("click", closeModal);
     document.getElementById("modal-cancel-btn").addEventListener("click", closeModal);
+
+    retryBtn.addEventListener("click", fetchTasks);
+
+    filterTagInput.addEventListener("change", () => {
+      activeFilters.tag = filterTagInput.value.trim();
+      fetchTasks();
+    });
+
+    filterOverdueCheckbox.addEventListener("change", () => {
+      activeFilters.overdue = filterOverdueCheckbox.checked;
+      fetchTasks();
+    });
+
+    filterClearBtn.addEventListener("click", () => {
+      activeFilters = { tag: "", overdue: false };
+      filterTagInput.value = "";
+      filterOverdueCheckbox.checked = false;
+      fetchTasks();
+    });
 
     modalOverlay.addEventListener("click", (e) => {
       if (e.target === modalOverlay) closeModal();
@@ -760,11 +848,18 @@
         return;
       }
 
+      const parsedTags = tagsField.value
+        .split(",")
+        .map((t) => t.trim())
+        .filter((t) => t.length > 0);
+
       const payload = {
         title: trimmedTitle,
         description: descriptionField.value.trim() === "" ? "" : descriptionField.value,
         priority: priorityField.value,
         assignee: assigneeField.value.trim() === "" ? null : assigneeField.value.trim(),
+        due_date: dueDateField.value === "" ? null : dueDateField.value,
+        tags: parsedTags,
       };
 
       if (modalMode === "create" || statusField.value !== originalStatus) {
@@ -790,8 +885,14 @@
 
         if (response.status === 422) {
           const body = await response.json().catch(() => ({}));
-          formBanner.textContent = formatValidationMessage(body);
-          formBanner.classList.add("visible");
+          const message = formatValidationMessage(body);
+          if (message.toLowerCase().includes("tag")) {
+            tagsError.textContent = message;
+            tagsError.classList.add("visible");
+          } else {
+            formBanner.textContent = message;
+            formBanner.classList.add("visible");
+          }
           return;
         }
 

@@ -60,7 +60,25 @@ on port 5500. The backend's CORS config in `app/main.py` already allows
 `http://localhost:5500` and `http://127.0.0.1:5500`; if you serve the frontend from
 a different port, add it to `allow_origins` in `app/main.py`.
 
+## Running tests
+
+```bash
+pytest tests/ -v
+```
+
+## Mid-course project (due dates + tags)
+
+Two features were added on top of Modules 1-3: optional task **due dates** with an
+overdue filter, and **tags/labels** with a tag filter. Both are usable from the
+Kanban board (modal fields, card display, and the filter bar above the board) and
+from the API directly (`GET /tasks?overdue=true`, `GET /tasks?tag=backend`).
+See `docs/midcourse/` for the user stories, design decisions, prompt log, and
+verification evidence for this work.
+
 ## Data storage
 
-Tasks are stored in `data/tasks.json`, created automatically on first run.
-This is a flat file, not a real database — fine for learning, not for production.
+Tasks are stored in an in-memory Python dict (`app/storage.py`) — **not** a file or
+database. This means all tasks are lost every time the server restarts. This is a
+deliberate Module 2 simplification for a learning project; earlier documentation
+in this README incorrectly described a JSON-file store, which was never actually
+wired up after Module 2 replaced it with the in-memory version — corrected here.

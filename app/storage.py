@@ -8,6 +8,7 @@ id/created_at/updated_at are assigned here, never accepted from client input.
 import uuid
 from datetime import datetime, timezone
 from typing import Optional
+from app.business_rules import is_task_overdue
 
 from app.models import TaskCreate, TaskUpdate, TaskResponse, TaskStatus, TaskPriority
 
@@ -24,6 +25,8 @@ def add_task(payload: TaskCreate) -> TaskResponse:
         status=payload.status,
         priority=payload.priority,
         assignee=payload.assignee,
+        due_date=payload.due_date,      # new
+        tags=payload.tags,              # new
         created_at=now,
         updated_at=now,
     )
@@ -34,12 +37,18 @@ def add_task(payload: TaskCreate) -> TaskResponse:
 def get_all_tasks(
     status: Optional[TaskStatus] = None,
     priority: Optional[TaskPriority] = None,
+    tag: Optional[str] = None,
+    overdue: Optional[bool] = None,
 ) -> list[TaskResponse]:
     results = list(_tasks.values())
     if status is not None:
         results = [t for t in results if t.status == status]
     if priority is not None:
         results = [t for t in results if t.priority == priority]
+    if tag is not None:
+        results = [t for t in results if tag in t.tags]
+    if overdue is not None:
+        results = [t for t in results if is_task_overdue(t.due_date, t.status) == overdue]
     return results
 
 

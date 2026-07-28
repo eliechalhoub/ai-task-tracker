@@ -23,6 +23,8 @@ app.add_middleware(
     allow_headers=["Content-Type"],
 )
 
+def _not_found(task_id: str) -> HTTPException:
+    return HTTPException(status_code=404, detail=f"Task with id {task_id} not found")
 
 @app.get("/health")
 def health():
@@ -38,15 +40,17 @@ def create_task(payload: TaskCreate) -> TaskResponse:
 def list_tasks(
     status: Optional[TaskStatus] = Query(default=None),
     priority: Optional[TaskPriority] = Query(default=None),
+    tag: Optional[str] = Query(default=None),
+    overdue: Optional[bool] = Query(default=None),
 ):
-    return storage.get_all_tasks(status=status, priority=priority)
+    return storage.get_all_tasks(status=status, priority=priority, tag=tag, overdue=overdue)
 
 
 @app.get("/tasks/{task_id}", response_model=TaskResponse, tags=["tasks"])
 def get_task(task_id: str) -> TaskResponse:
     task = storage.get_task_by_id(task_id)
     if task is None:
-        raise HTTPException(status_code=404, detail=f"Task with id {task_id} not found")
+        raise _not_found(task_id)
     return task
 
 
@@ -55,12 +59,12 @@ def update_task(task_id: str, payload: TaskUpdate) -> TaskResponse:
     if payload.status is not None:
         existing = storage.get_task_by_id(task_id)
         if existing is None:
-            raise HTTPException(status_code=404, detail=f"Task with id {task_id} not found")
+            raise _not_found(task_id)
         validate_status_transition(existing.status, payload.status)
 
     updated = storage.update_task(task_id, payload)
     if updated is None:
-        raise HTTPException(status_code=404, detail=f"Task with id {task_id} not found")
+        raise _not_found(task_id)
     return updated
 
 
@@ -68,5 +72,5 @@ def update_task(task_id: str, payload: TaskUpdate) -> TaskResponse:
 def delete_task(task_id: str):
     deleted = storage.delete_task(task_id)
     if not deleted:
-        raise HTTPException(status_code=404, detail=f"Task with id {task_id} not found")
+        raise _not_found(task_id)
     return None
