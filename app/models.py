@@ -11,11 +11,11 @@ from datetime import date, datetime
 from enum import Enum
 from typing import Optional
 
-from pydantic import BaseModel, ConfigDict, field_validator
+from pydantic import BaseModel, ConfigDict, field_validator, model_validator
 
 MAX_TAGS = 5
 MAX_TAG_LENGTH = 30
-
+_NON_NULLABLE_FIELDS = ("title", "description", "status", "priority", "tags")
 
 class TaskStatus(str, Enum):
     TODO = "ToDo"
@@ -82,11 +82,21 @@ class TaskUpdate(BaseModel):
     due_date: Optional[date] = None
     tags: Optional[list[str]] = None
 
+    @model_validator(mode="before")
+    @classmethod
+    def reject_explicit_null_for_required_fields(cls, data):
+        if isinstance(data, dict):
+            offenders = [f for f in _NON_NULLABLE_FIELDS if f in data and data[f] is None]
+            if offenders:
+                raise ValueError(
+                    f"{', '.join(offenders)} cannot be explicitly set to null; "
+                    f"omit the field entirely to leave it unchanged"
+                )
+        return data
+
     @field_validator("title")
     @classmethod
-    def validate_title(cls, v: Optional[str]) -> Optional[str]:
-        if v is None:
-            return v
+    def validate_title(cls, v: str) -> str:
         stripped = v.strip()
         if not stripped:
             raise ValueError("Title is required and cannot be blank")

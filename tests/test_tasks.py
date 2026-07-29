@@ -191,3 +191,26 @@ def test_patch_unrelated_update_preserves_tags(client):
     response = client.patch(f"/tasks/{created['id']}", json={"priority": "High"})
     assert response.status_code == 200
     assert response.json()["tags"] == ["backend"]
+
+def test_patch_explicit_null_title_returns_422_and_does_not_clear_title(client, created_task):
+    response = client.patch(f"/tasks/{created_task['id']}", json={"title": None})
+    assert response.status_code == 422
+    unchanged = client.get(f"/tasks/{created_task['id']}")
+    assert unchanged.json()["title"] == created_task["title"]
+
+
+def test_patch_explicit_null_on_required_fields_returns_422(client, created_task):
+    for field, value in [("description", None), ("status", None), ("priority", None), ("tags", None)]:
+        response = client.patch(f"/tasks/{created_task['id']}", json={field: value})
+        assert response.status_code == 422, f"expected 422 for explicit null {field}"
+
+
+def test_patch_explicit_null_assignee_and_due_date_are_allowed(client):
+    created = client.post(
+        "/tasks", json={"title": "has assignee and due date", "assignee": "Sam", "due_date": "2026-01-01"}
+    ).json()
+    response = client.patch(f"/tasks/{created['id']}", json={"assignee": None, "due_date": None})
+    assert response.status_code == 200
+    body = response.json()
+    assert body["assignee"] is None
+    assert body["due_date"] is None
