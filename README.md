@@ -9,6 +9,56 @@ priority, tag, and overdue state; task **due dates** with an overdue indicator;
 **Explicitly out of scope:** authentication, user accounts, multi-tenancy,
 real-time sync, mobile app, notifications, a production database, and deployment.
 
+## Final Project
+Branch reviewed: `final-project`
+
+### What this submission demonstrates
+- Existing Task Tracker app still runs inside the intended course scope (verified: `/health`
+  returns 200, all 30 tests pass, frontend serves the real Kanban board markup).
+- CI runs the pytest suite on push and pull request (`.github/workflows/ci.yml`; latest run on
+  `main` succeeded — see `docs/release-evidence.md`).
+- Docker image builds and runs with `/health` returning 200, confirmed against the *actual*
+  built image, not assumed from the Dockerfile alone.
+- AI review, security, and ownership evidence is in `docs/`.
+
+### How to run locally
+```bash
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+uvicorn app.main:app --reload --port 8000
+```
+
+### How to run tests
+```bash
+pytest -v
+```
+
+### How to run with Docker
+```bash
+docker build -t task-tracker:dev .
+docker run -d --name tt-dev -p 8000:8000 task-tracker:dev
+sleep 2
+curl http://localhost:8000/health
+docker stop tt-dev && docker rm tt-dev
+```
+
+### Evidence files
+- [docs/release-evidence.md](docs/release-evidence.md)
+- [docs/final-ai-review.md](docs/final-ai-review.md)
+- [docs/ai-playbook.md](docs/ai-playbook.md)
+
+### AI assistance summary
+AI helped draft or review: CI verification, Docker verification, documentation accuracy checks,
+security review, and this final project's evidence documents.
+I verified the work by: running the actual test suite (30/30 passed), curling a live `/health`
+endpoint (both local and containerized), building and running the real Docker image, querying
+GitHub's Actions API directly for the actual latest CI run status, and re-running a failed
+Docker health check rather than accepting the first (failing) result.
+One AI suggestion I rejected or corrected: see `docs/final-ai-review.md` — a proposed `app/`
+diff (bounding the `description` field's length) was left unapplied after review, since it was
+never scoped to a concrete required value or explicitly approved.
+
 ## 1. Project overview
 
 Backend: Python/FastAPI, in-memory storage only (see [Project conventions and
@@ -24,10 +74,10 @@ full list of what's intentionally out of scope.
 
 ## 2. Prerequisites
 
-- Python 3.11 — `[VERIFY]` this repo has no `.python-version`, `pyproject.toml`,
-  or other local pin; 3.11 is inferred from `.github/workflows/ci.yml`
-  (`actions/setup-python@v5` with `python-version: "3.11"`), not from a
-  requirement stated elsewhere in the repo.
+- Python 3.11 in CI (`.github/workflows/ci.yml`, `actions/setup-python@v5`) — this repo has
+  no `.python-version` or `pyproject.toml` pinning a version for local development.
+  Verified during the final-project baseline: the full test suite (30/30) also passes locally
+  on Python 3.12.3, so 3.11 is confirmed for CI but not a hard local requirement.
 - `pip` (bundled with Python)
 - Docker — only needed for [section 6](#6-run-with-docker); no version is
   pinned in the `Dockerfile`. `[VERIFY]` minimum supported Docker version.
@@ -110,9 +160,14 @@ published image, and no production configuration here.
 ```bash
 docker build -t task-tracker:dev .
 docker run -d --name tt-dev -p 8000:8000 task-tracker:dev
+sleep 2   # give uvicorn a moment to finish starting before the health check
 curl http://localhost:8000/health
 docker logs tt-dev
 ```
+
+Verified during the final-project baseline: curling `/health` immediately after `docker run -d`
+can race the container's startup and return no response at all — the `sleep 2` above isn't
+theoretical, it's what turned a failed check into `{"status":"ok",...}` on the first real run.
 
 Stop and remove the container when done:
 ```bash

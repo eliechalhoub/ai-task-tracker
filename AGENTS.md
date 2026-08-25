@@ -2,12 +2,11 @@
 
 Guidance for AI coding agents (Codex, Claude Code, etc.) working in this repository.
 
-**Current phase note (as of 2026-08-25):** Section 4 below reflects Module 5
-of this repo's course context — grading and governing existing AI-assisted
-code, not building new features. This is not a permanent constraint on the
-repo, but agents must not revise Section 4 themselves based on inferred
-context. Update it only when the user explicitly states the module/phase has
-changed and specifies the new constraints.
+**Current phase note (as of 2026-08-26):** the user has explicitly declared a new phase —
+the end-of-course Final Project, worked on branch `final-project`. Section 4 below has been
+updated accordingly. Per the standing rule, agents must not revise Section 4 themselves based on
+inferred context; update it only when the user explicitly states the phase has changed again and
+specifies the new constraints.
 
 ## 1. Project summary
 
@@ -129,25 +128,36 @@ exists purely for test isolation (see `tests/conftest.py`'s autouse fixture).
 docstring; since `TaskResponse` is always a Pydantic v2 `BaseModel`, this branch
 appears unreachable. Not fixing it — Module 5 is analysis-only.
 
-## 4. Module 5 guardrails (current phase — see note at top of file)
+## 4. Final Project guardrails (current phase — see note at top of file)
 
 Hard constraints — do not deviate from these without explicit user approval:
 
-- **Read-only by default.** Investigate and report before proposing edits.
-- **`docs/` is the default edit surface.** Do not edit files outside `docs/`
-  unless the user explicitly approves a specific different path for that task.
-- **Do not modify `app/`** during Module 5 unless the user asks for one specific,
-  minimal, explicitly approved fix.
-- **State intent before acting**: what the task is understood to be, which files
-  will be inspected, and whether edit permission is needed — before making
-  changes.
+- **All final-project work happens on the `final-project` branch.** Do not commit this work
+  directly to `main`.
+- **No new product features.** Do not implement comments, authentication, a production
+  database, notifications, or unrelated UI changes — this project hardens/documents/governs
+  the existing app, it does not extend it.
+- **`app/` and `frontend/` may only be changed for a small, specific bug fix, security fix, or
+  documentation-supported correction** — never a refactor or feature addition. Any such change
+  must be explained in `docs/final-ai-review.md`.
+- **No real secrets or personal data** may be pasted into an AI tool or committed to the repo —
+  no credentials, `.env` values, tokens, production logs, or real personal/customer data.
+- **Ownership rule:** if a changed line, command, config choice, or AI suggestion can't be
+  explained, it does not go into the final submission.
+- **State intent before acting**: what the task is understood to be, which files will be
+  inspected, and whether edit permission is needed — before making changes.
+- **Docs-first / read-first.** Before editing any file, read `README.md`, this file, and the
+  relevant `docs/` note for that area first (e.g. `docs/decisions/module4-docker-decision.md`
+  before touching `Dockerfile`; `docs/security-review.md` before touching validation logic).
+  The point isn't to block edits — this phase explicitly requires them — it's to make sure a
+  change is consistent with what's already been decided and documented, instead of re-deciding
+  it from scratch.
 
-Working-style preference (this repo's maintainer's convention for this course,
-not a hard constraint):
-
-- **One bounded task per thread/session.** Do not chain unrelated work into a
-  single task; if a request implies multiple tasks, do them across separate
-  threads rather than in one.
+Retired for this phase (was a Module 5 constraint, not a permanent rule): the "read-only
+by default" / "`docs/` is the default edit surface" restriction — replaced above with a
+read-first-not-edit-blocked guardrail. This phase explicitly requires running the app, running
+tests, building Docker, and — within the limits above — touching `app/`/`frontend/` when
+justified.
 
 ## 5. Security and governance reminders
 
