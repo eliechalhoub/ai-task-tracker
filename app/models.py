@@ -58,6 +58,18 @@ class TaskCreate(BaseModel):
     @field_validator("title")
     @classmethod
     def validate_title(cls, v: str) -> str:
+        """Validate and normalize the task title.
+
+        Args:
+            v (str): The raw title value.
+
+        Returns:
+            str: The stripped title.
+
+        Raises:
+            ValueError: If the stripped title is empty, or longer than 200
+                characters.
+        """
         stripped = v.strip()
         if not stripped:
             raise ValueError("Title is required and cannot be blank")
@@ -68,6 +80,23 @@ class TaskCreate(BaseModel):
     @field_validator("tags")
     @classmethod
     def validate_tags(cls, v: list[str]) -> list[str]:
+        """Validate and normalize the task's tags.
+
+        Delegates to `_clean_tags`: strips whitespace, rejects blank tags,
+        rejects tags over `MAX_TAG_LENGTH` characters, de-duplicates by
+        exact (case-sensitive) string match, and rejects more than
+        `MAX_TAGS` tags.
+
+        Args:
+            v (list[str]): The raw tag list.
+
+        Returns:
+            list[str]: The cleaned, de-duplicated tag list.
+
+        Raises:
+            ValueError: If any tag is blank or too long, or if there are
+                more than `MAX_TAGS` tags after de-duplication.
+        """
         return _clean_tags(v)
 
 
@@ -85,6 +114,27 @@ class TaskUpdate(BaseModel):
     @model_validator(mode="before")
     @classmethod
     def reject_explicit_null_for_required_fields(cls, data):
+        """Reject explicit `null` for non-nullable update fields.
+
+        Runs before field-level validation. `title`, `description`,
+        `status`, `priority`, and `tags` cannot be explicitly set to
+        `null` in a PATCH payload -- the client must omit the field
+        entirely to leave it unchanged. `assignee` and `due_date` are not
+        covered by this check, so explicit `null` is allowed for them (to
+        unassign / clear a due date).
+
+        Args:
+            data: The raw input data for the model, as received by
+                Pydantic before field validation.
+
+        Returns:
+            The unmodified `data`, if no offending fields are present.
+
+        Raises:
+            ValueError: If any of `title`, `description`, `status`,
+                `priority`, or `tags` is present in `data` with a value of
+                `None`.
+        """
         if isinstance(data, dict):
             offenders = [f for f in _NON_NULLABLE_FIELDS if f in data and data[f] is None]
             if offenders:
@@ -97,6 +147,23 @@ class TaskUpdate(BaseModel):
     @field_validator("title")
     @classmethod
     def validate_title(cls, v: str) -> str:
+        """Validate and normalize an updated title.
+
+        Only runs when `title` is explicitly supplied with a non-null
+        value: explicit `null` is already rejected by
+        `reject_explicit_null_for_required_fields`, and Pydantic does not
+        run field validators against the unset default.
+
+        Args:
+            v (str): The raw title value.
+
+        Returns:
+            str: The stripped title.
+
+        Raises:
+            ValueError: If the stripped title is empty, or longer than 200
+                characters.
+        """
         stripped = v.strip()
         if not stripped:
             raise ValueError("Title is required and cannot be blank")
@@ -107,6 +174,20 @@ class TaskUpdate(BaseModel):
     @field_validator("tags")
     @classmethod
     def validate_tags(cls, v: Optional[list[str]]) -> Optional[list[str]]:
+        """Validate and normalize updated tags, if supplied.
+
+        Args:
+            v (Optional[list[str]]): The raw tag list, or None.
+
+        Returns:
+            Optional[list[str]]: None if `v` is None; otherwise the
+                cleaned, de-duplicated tag list (see
+                `TaskCreate.validate_tags` / `_clean_tags`).
+
+        Raises:
+            ValueError: If any tag is blank or too long, or if there are
+                more than `MAX_TAGS` tags after de-duplication.
+        """
         if v is None:
             return v
         return _clean_tags(v)
