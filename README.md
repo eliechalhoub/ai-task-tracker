@@ -245,6 +245,6 @@ verification evidence. In particular,
 decisions and rejected alternatives for the due-dates and tags features —
 check it before changing overdue logic, tag representation, or filter
 response shape.
-[`docs/midcourse/module4-docker-decision.md`](docs/midcourse/module4-docker-decision.md)
+[`docs/decisions/module4-docker-decision.md`](docs/decisions/module4-docker-decision.md)
 records the Module 4 Dockerfile design decision, alternatives, and open
 questions.
