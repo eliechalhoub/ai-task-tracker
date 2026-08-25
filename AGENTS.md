@@ -25,6 +25,7 @@ Layering is strict and one-directional:
 ## 2. Tech stack and commands
 
 **Stack** (source: `requirements.txt`):
+
 - fastapi==0.115.0
 - uvicorn[standard]==0.30.6
 - pydantic==2.9.2
@@ -38,12 +39,14 @@ Layering is strict and one-directional:
   as a hard project requirement elsewhere.
 
 **Setup:**
+
 ```bash
 python3 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
 cp .env.example .env
 ```
+
 `[VERIFY]` — `.env.example` defines `PORT` and `APP_ENV`, but no code under `app/`
 reads environment variables (no `os.environ`/`os.getenv`/`load_dotenv` calls found
 in `app/main.py`, `app/models.py`, `app/storage.py`, `app/business_rules.py`). The
@@ -51,28 +54,35 @@ in `app/main.py`, `app/models.py`, `app/storage.py`, `app/business_rules.py`). T
 
 **Run the backend** (from the project root — running from inside `app/` causes
 `ModuleNotFoundError: No module named 'app'`, per `README.md` Troubleshooting):
+
 ```bash
 uvicorn app.main:app --reload --port 8000
 ```
 
 **Run the frontend** (must be served, not opened as `file://`, so CORS treats it
 as its own origin):
+
 ```bash
 cd frontend
 python3 -m http.server 5500
 ```
+
 Then open http://localhost:5500/index.html. Confirmed in `app/main.py`: CORS
 (`CORSMiddleware`) allows only `http://localhost:5500` and `http://127.0.0.1:5500`,
 methods `GET, POST, PATCH, DELETE`, header `Content-Type`.
 
 **Run tests:**
+
 ```bash
 pytest -v
 ```
+
 Single test:
+
 ```bash
 pytest tests/test_tasks.py::test_patch_invalid_transition_todo_to_done_returns_422 -v
 ```
+
 `tests/verify_a.py` is a standalone script, not a pytest file — confirmed
 directly: it imports `ValidationError` and runs `expect_fail`/`expect_ok`
 assertions with `print(...)` PASS/FAIL output at module scope, with no

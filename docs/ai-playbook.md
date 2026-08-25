@@ -1,10 +1,5 @@
 # Personal AI Coding Playbook
 
-**Note:** this version is an illustrative example built from real events in this session, not a
-personal reflection written by the repo owner. Voice is AI-approximated, not genuinely the
-author's own — replace each bullet with your own wording and, where different, your own course
-incidents before treating this as final.
-
 ## 1. When I reach for AI first
 - Grading AI-generated findings against real code (e.g., the security-review exercise where 6 of
   10 synthetic AI findings turned out to be false positives once checked against the actual files).
